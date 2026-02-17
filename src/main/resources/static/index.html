@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Group 15 | Premium Catalog</title>
+    <style>
+        :root { --primary: #2563eb; --bg: #f8fafc; --text: #1e293b; }
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; background: var(--bg); color: var(--text); }
+        
+        /* Sidebar Styling */
+        nav { width: 300px; height: 100vh; background: white; padding: 30px; border-right: 1px solid #e2e8f0; position: sticky; top: 0; }
+        h1 { font-size: 1.5rem; color: var(--primary); margin-bottom: 30px; }
+        .control-group { margin-bottom: 20px; }
+        label { display: block; font-size: 0.8rem; font-weight: bold; margin-bottom: 5px; text-transform: uppercase; color: #64748b; }
+        input, select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; box-sizing: border-box; margin-bottom: 10px; }
+        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 6px; font-weight: bold; cursor: pointer; transition: opacity 0.2s; }
+        button:hover { opacity: 0.9; }
+        button:disabled { background: #cbd5e1; cursor: not-allowed; }
+
+        /* Main Content */
+        main { flex: 1; padding: 40px; min-height: 100vh; display: flex; flex-direction: column; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 25px; flex-grow: 1; }
+        .card { background: white; padding: 20px; border-radius: 12px; border: 1px solid #e2e8f0; transition: transform 0.2s, box-shadow 0.2s; height: fit-content; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
+        .price { font-size: 1.25rem; font-weight: 800; color: #059669; margin: 10px 0; }
+        .category-tag { font-size: 0.7rem; background: #eff6ff; color: var(--primary); padding: 4px 8px; border-radius: 4px; text-transform: uppercase; font-weight: bold; }
+
+        /* Pagination Info */
+        .pagination-info { margin-top: 40px; padding-top: 20px; display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #e2e8f0; }
+        .page-btn-container { display: flex; gap: 10px; }
+        .page-btn { width: 110px; }
+    </style>
+</head>
+<body>
+    <nav>
+        <h1>Group 15 Store</h1>
+        
+        <div class="control-group">
+            <label for="categoryInput">Category Filter</label>
+            <input type="text" id="categoryInput" placeholder="e.g., Electronics" 
+                   onkeyup="if(event.key === 'Enter') { currentPage=0; fetchProducts(); }">
+        </div>
+
+        <div class="control-group">
+            <label for="sizeInput">Items Per Page</label>
+            <select id="sizeInput" onchange="currentPage=0; fetchProducts()">
+                <option value="8">8 Products</option>
+                <option value="16">16 Products</option>
+                <option value="32">32 Products</option>
+                <option value="50">50 Products</option>
+            </select>
+        </div>
+
+        <button onclick="currentPage=0; fetchProducts()">Apply Filters</button>
+    </nav>
+
+    <main>
+        <div id="productGrid" class="grid">
+            </div>
+        
+        <div class="pagination-info">
+            <span id="pageTracker">Page 1 of 1</span>
+            <div class="page-btn-container">
+                <button id="prevBtn" class="page-btn" onclick="changePage(-1)">Previous</button>
+                <button id="nextBtn" class="page-btn" onclick="changePage(1)">Next</button>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // Start at page 0 (Spring Data JPA uses 0-based indexing)
+        let currentPage = 0;
+
+        async function fetchProducts() {
+            const category = document.getElementById('categoryInput').value.trim();
+            const size = document.getElementById('sizeInput').value;
+            
+            // Constructs URL with category, page, and size parameters
+            const url = `/api/products?category=${encodeURIComponent(category)}&page=${currentPage}&size=${size}`;
+            
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const data = await response.json();
+                
+                // data.content contains the list of products
+                renderGrid(data.content);
+                
+                // data contains pagination metadata (number, totalPages, first, last)
+                updatePagination(data);
+            } catch (e) { 
+                console.error("API Error:", e);
+                document.getElementById('productGrid').innerHTML = `<p style="color: red;">Error loading products. Make sure your Spring Boot server is running.</p>`;
+            }
+        }
+
+        function renderGrid(products) {
+            const grid = document.getElementById('productGrid');
+            if (products.length === 0) {
+                grid.innerHTML = `<p>No products found in this category.</p>`;
+                return;
+            }
+
+            grid.innerHTML = products.map(p => `
+                <div class="card">
+                    <span class="category-tag">${p.category || 'General'}</span>
+                    <h3>${p.name}</h3>
+                    <p style="color:#64748b; font-size:0.9rem">${p.description || 'No description available.'}</p>
+                    <p class="price">₦${(p.price || 0).toLocaleString()}</p>
+                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; color:#94a3b8">
+                        <span>Stock: ${p.stock || 0}</span>
+                        <span>ID: #${p.id}</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updatePagination(data) {
+            // Spring returns 0-based page number, so we add 1 for display
+            const displayPage = data.totalPages === 0 ? 0 : data.number + 1;
+            document.getElementById('pageTracker').innerText = `Page ${displayPage} of ${data.totalPages}`;
+            
+            // Disable buttons based on current page position
+            document.getElementById('prevBtn').disabled = data.first || data.totalPages === 0;
+            document.getElementById('nextBtn').disabled = data.last || data.totalPages === 0;
+        }
+
+        function changePage(step) {
+            currentPage += step;
+            fetchProducts();
+            // Scroll to top of main content when changing pages
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // Load initial product set on page load
+        fetchProducts();
+    </script>
+</body>
+</html>
