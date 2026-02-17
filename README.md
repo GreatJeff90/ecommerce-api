@@ -1,7 +1,3 @@
-Here is the updated **README.md** for Group 15. This version incorporates the new full-stack frontend, the 100-product master dataset, and a specialized distribution of labor for all 20 group members.
-
----
-
 # 🛒 E-commerce Product API (Full-Stack Edition)
 
 **Course:** C 281.1 – Intro. To Cyber Technology
